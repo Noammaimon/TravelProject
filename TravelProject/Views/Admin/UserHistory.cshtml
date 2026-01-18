@@ -1,0 +1,62 @@
+﻿@model IEnumerable<TravelProject.Models.OrderModel>
+
+@{
+    ViewData["Title"] = "היסטוריית הזמנות";
+}
+
+<div class="container mt-5" dir="rtl">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-right">היסטוריית הזמנות של המשתמש</h2>
+        <a asp-action="ManageUsers" class="btn btn-secondary">חזרה לרשימת המשתמשים</a>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-body">
+            @if (Model != null && Model.Any())
+            {
+                <table class="table table-striped text-right">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>מזהה הזמנה</th>
+                            <th>יעד הטיול</th>
+                            <th>תאריך יציאה</th>
+                            <th>תאריך ביצוע הזמנה</th>
+                            <th>סטטוס</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var order in Model)
+                        {
+                            <tr>
+                                <td>#@order.Id</td>
+                                <td><strong>@order.Destination</strong></td>
+                                <td>@order.StartDate.ToShortDateString()</td>
+                                <td>@order.OrderDate.ToShortDateString()</td>
+                                <td>
+                                    @if (order.Status == "Confirmed" || order.Status == "מאושר")
+                                    {
+                                        <span class="badge badge-success text-dark">מאושר</span>
+                                    }
+                                    else if (order.Status == "Pending" || order.Status == "במתנה")
+                                    {
+                                        <span class="badge badge-warning text-dark">בהמתנה</span>
+                                    }
+                                    else
+                                    {
+                                        <span class="badge badge-danger text-dark">@order.Status</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <div class="alert alert-info text-center">
+                    <h5>לא נמצאו הזמנות למשתמש זה.</h5>
+                </div>
+            }
+        </div>
+    </div>
+</div>

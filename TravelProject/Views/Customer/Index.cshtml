@@ -1,0 +1,220 @@
+﻿@model IEnumerable<TravelProject.Models.TripModel>
+
+@{
+    ViewData["Title"] = "דף לקוח";
+}
+
+
+<div class="home-page-wrapper px-4" dir="rtl" style="margin-top: 100px;">
+
+    <div class="search-bar-container shadow-lg bg-white p-2">
+        <form asp-controller="Customer" asp-action="Index" method="get" class="d-flex align-items-center w-100 px-2 py-1 flex-wrap">
+
+            <div class="search-item flex-grow-1 px-3">
+                <label class="small fw-bold d-block mb-0 text-secondary">חיפוש חופשי</label>
+                <input type="text" name="searchString"
+                       class="form-control border-0 bg-transparent p-0 shadow-none text-truncate"
+                       placeholder="יעד או מדינה..."
+                       value="@Context.Request.Query["searchString"]" />
+            </div>
+
+
+            <div class="search-item px-3" style="min-width: 130px;">
+                <label class="small fw-bold d-block mb-0 text-secondary">מיין לפי</label>
+                <select name="sortOrder" class="form-select border-0 bg-transparent p-0 shadow-none" style="cursor: pointer;">
+                    <option value="">בחרו...</option>
+                    <option value="popular" selected="@(Context.Request.Query["sortOrder"] == "popular")">הכי פופולרי</option>
+                    <option value="discount" selected="@(Context.Request.Query["sortOrder"] == "discount")">חבילות מוזלות</option>
+                    <option value="price_asc" selected="@(Context.Request.Query["sortOrder"] == "price_asc")">מהזול ליקר</option>
+                    <option value="price_desc" selected="@(Context.Request.Query["sortOrder"] == "price_desc")">מהיקר לזול</option>
+                </select>
+            </div>
+
+
+            <div class="search-item px-3" style="min-width: 125px;">
+                <label class="small fw-bold d-block mb-0 text-secondary">מתי?</label>
+                <input type="date" name="travelDate"
+                       class="form-control border-0 bg-transparent p-0 shadow-none"
+                       style="cursor: pointer;"
+                       value="@Context.Request.Query["travelDate"]" />
+            </div>
+
+
+            <div class="search-item px-3" style="min-width: 130px;">
+                <label class="small fw-bold d-block mb-0 text-secondary">סוג נופש</label>
+                <select name="tripType" class="form-select border-0 bg-transparent p-0 shadow-none" style="cursor: pointer;">
+                    <option value="">הכל</option>
+                    @if (ViewBag.TripTypes != null)
+                    {
+                        foreach (var type in ViewBag.TripTypes)
+                        {
+                            <option value="@type" selected="@(Context.Request.Query["tripType"].ToString() == type.ToString())">@type</option>
+                        }
+                    }
+                </select>
+            </div>
+
+
+            <div class="search-item px-3" style="min-width: 160px;">
+                <label class="small fw-bold d-block mb-0 text-secondary">מחיר ($)</label>
+                <div class="d-flex align-items-center gap-1">
+                    <input type="number" name="minPrice" placeholder="מ-"
+                           class="form-control form-control-sm border-0 bg-transparent p-0 shadow-none w-50"
+                           value="@Context.Request.Query["minPrice"]" />
+                    <span class="text-muted" style="font-size: 0.8rem;">-</span>
+                    <input type="number" name="maxPrice" placeholder="עד"
+                           class="form-control form-control-sm border-0 bg-transparent p-0 shadow-none w-50"
+                           value="@Context.Request.Query["maxPrice"]" />
+                </div>
+            </div>
+
+            <div class="d-flex gap-2 align-items-center ps-3 ms-auto mt-2 mt-lg-0">
+                <button type="submit" class="btn btn-brand-brown shadow-sm rounded-3 px-4 fw-bold" style="min-width: 70px; height: 45px;">
+                    חיפוש
+                </button>
+                <a asp-action="Index" class="text-secondary text-decoration-none small fw-bold" style="white-space:nowrap;">
+                    נקה
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <h3 class="section-title mb-4 mt-5 text-end">החבילות המומלצות שלנו</h3>
+
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-5 g-4 mb-5">
+        @foreach (var item in Model)
+        {
+            if (item == null) continue;
+
+            <div class="col">
+                <div class="card h-100 shadow-sm trip-card-container border-0 text-end" style="border-radius: 15px; overflow: hidden;">
+
+                    <div class="img-zoom-container position-relative">
+                        <img src="@(string.IsNullOrEmpty(item.ImagePaths) ? "/images/default-trip.jpg" : item.ImagePaths)"
+                             class="card-img-top" style="height: 160px; object-fit: cover;" alt="@item.Destination">
+
+                        <span class="position-absolute top-0 start-0 m-2 badge bg-primary text-white shadow-sm" style="font-size: 0.75rem;">
+                            @item.TripType
+                        </span>
+                    </div>
+
+                    <div class="card-body d-flex flex-column p-3">
+                        <h5 class="fw-bold mb-1 text-dark" style="font-size: 1.1rem;">@item.Destination</h5>
+                        <p class="text-muted small mb-2"><i class="bi bi-geo-alt"></i> @item.Country</p>
+
+                        <p class="card-text small text-secondary mb-3 flex-grow-1">
+                            @if (!string.IsNullOrEmpty(item.Description) && item.Description.Length > 80)
+                            {
+                                @item.Description.Substring(0, 77)
+
+                                
+                            }
+                            else
+                            {
+                                @item.Description
+                            }
+                        </p>
+
+                        <div class="mt-auto">
+                            <div class="text-center mb-2">
+                                @{
+                                   
+                                    var hasAvailableRooms = item.Instances != null && item.Instances.Any(i => i.RoomsAvailable > 0);
+                                    var minPrice = (item.Instances != null && item.Instances.Any()) ? item.Instances.Min(i => i.Price) : 0;
+                                    var totalRooms = item.Instances?.Sum(i => i.RoomsAvailable) ?? 0;
+                                }
+
+                                @if (totalRooms > 0)
+                                {
+                                    <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                        נותרו @totalRooms חדרים במועדים השונים
+                                    </span>
+                                    <div class="small text-muted mt-1">החל מ-@minPrice.ToString("N0") ₪</div>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-warning-subtle text-warning border border-warning-subtle">
+                                        רשימת המתנה בלבד
+                                    </span>
+                                }
+                            </div>
+
+                            
+
+                            <a asp-controller="Trips" asp-action="Details" asp-route-id="@item.Id"
+                               class="btn btn-link w-100 btn-sm text-secondary mt-1">צפה בפרטים נוספים</a>
+                        </div>
+                        <div class="modal fade" id="tripModal-@item.Id" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog modal-dialog-centered">
+                                <div class="modal-content text-end" dir="rtl">
+                                    <div class="modal-header d-flex justify-content-between align-items-center">
+                                        <h5 class="modal-title fw-bold">מועדים זמינים ל@item.Destination</h5>
+                                        <button type="button" class="btn-close m-0" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body p-0">
+                                        <div class="list-group list-group-flush">
+                                            @if (item.Instances != null && item.Instances.Any())
+                                            {
+                                                foreach (var inst in item.Instances)
+                                                {
+                                                    <div class="list-group-item p-3 border-bottom">
+                                                        <div class="d-flex justify-content-between align-items-center mb-2">
+                                                            <div>
+                                                                <div class="fw-bold fs-5">@inst.StartDate.ToString("dd/MM/yyyy")</div>
+                                                                <div class="small @(inst.RoomsAvailable > 0 ? "text-success" : "text-danger")">
+                                                                    @(inst.RoomsAvailable > 0 ? $"נותרו {inst.RoomsAvailable} חדרים" : "הרישום מלא - רשימת המתנה")
+                                                                </div>
+                                                            </div>
+                                                            <div class="text-start">
+                                                                <div class="fw-bold text-primary fs-5">@inst.Price.ToString("N0") ₪</div>
+                                                            </div>
+                                                        </div>
+
+                                                        <form asp-controller="Customer" asp-action="BookTrip" method="post">
+                                                            <input type="hidden" name="instanceId" value="@inst.Id" />
+                                                            @if (inst.RoomsAvailable > 0)
+                                                            {
+                                                                <div class="collapse mb-2" id="payArea-@inst.Id">
+                                                                    <div class="card card-body bg-light border-0 p-2">
+                                                                        <input type="text" class="form-control form-control-sm mb-2" placeholder="מספר כרטיס אשראי" required>
+                                                                        <div class="row g-2">
+                                                                            <div class="col-6"><input type="text" class="form-control form-control-sm" placeholder="MM/YY" required></div>
+                                                                            <div class="col-6"><input type="text" class="form-control form-control-sm" placeholder="CVV" required></div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                                <button type="button" class="btn btn-success btn-sm w-100 rounded-pill"
+                                                                        onclick="this.style.display='none'; document.getElementById('btnSubmit-@inst.Id').style.display='block'; new bootstrap.Collapse(document.getElementById('payArea-@inst.Id')).show();">
+                                                                    הזמן עכשיו
+                                                                </button>
+                                                                <button type="submit" id="btnSubmit-@inst.Id" class="btn btn-success btn-sm w-100 rounded-pill" style="display:none;">
+                                                                    אשר תשלום והזמן
+                                                                </button>
+                                                            }
+                                                            else
+                                                            {
+                                                                <button type="submit" class="btn btn-warning btn-sm w-100 rounded-pill">
+                                                                    הצטרף לרשימת המתנה
+                                                                </button>
+                                                            }
+                                                        </form>
+                                                    </div>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <div class="p-4 text-center text-muted">אין מועדים קרובים לטיול זה.</div>
+                                            }
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+
+
+    </div>
+

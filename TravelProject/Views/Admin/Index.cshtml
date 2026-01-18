@@ -1,0 +1,69 @@
+﻿@model IEnumerable<TravelProject.Models.TripModel>
+@{
+    ViewData["Title"] = "ניהול מערכת";
+}
+
+<h3 class="section-title mb-4 mt-5 text-end">ניהול חבילות נופש</h3>
+
+<div class="container mt-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a asp-controller="Trips" asp-action="Create" class="btn btn-success btn-lg shadow-sm">
+            <i class="bi bi-plus-circle"></i> יצירת חבילה חדשה
+        </a>
+        <h3 class="section-title text-end">היעדים שלנו</h3>
+    </div>
+
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-5 g-4 mb-5">
+        @foreach (var item in Model)
+        {
+            if (item == null) continue;
+
+            var futureInstances = item.Instances?.Where(i => i.StartDate.Date >= DateTime.Today).ToList();
+            bool hasDates = futureInstances != null && futureInstances.Any();
+
+            <div class="col">
+                <div class="card h-100 shadow-sm trip-card-container border-0 @(hasDates ? "" : "border border-danger")">
+                    <div class="img-zoom-container position-relative">
+                        <img src="@(string.IsNullOrEmpty(item.ImagePaths) ? "/images/default-trip.jpg" : item.ImagePaths)"
+                             class="trip-img-fixed @(hasDates ? "" : "opacity-50")" alt="@item.Destination"
+                             style="@(hasDates ? "" : "filter: grayscale(100%);")">
+
+                        @if (!hasDates)
+                        {
+                            <div class="position-absolute top-50 start-50 translate-middle">
+                                <span class="badge bg-danger fs-6 shadow-lg">אין מועדים זמינים</span>
+                            </div>
+                        }
+                    </div>
+
+                    <div class="card-body d-flex flex-column text-end">
+                        <div class="d-flex justify-content-between align-items-start mb-1">
+                            <h6 class="destination-title mb-0">@item.Destination</h6>
+                            @if (!hasDates)
+                            {
+                                <i class="bi bi-exclamation-triangle-fill text-danger" title="זקוק לעדכון מועדים"></i>
+                            }
+                        </div>
+                        <small class="text-muted mb-2">@item.Country</small>
+
+                        <p class="card-text small trip-description mb-3">
+                            @item.Description
+                        </p>
+
+                        <div class="mt-auto">
+                            <div class="d-grid">
+                                <a asp-controller="Trips"
+                                   asp-action="Details"
+                                   asp-route-id="@item.Id"
+                                   class="btn @(hasDates ? "btn-primary" : "btn-outline-danger")">
+                                    <i class="bi @(hasDates ? "bi-gear" : "bi-calendar-plus") ms-1"></i>
+                                    @(hasDates ? "לפרטים וניהול" : "עדכן מועדים")
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

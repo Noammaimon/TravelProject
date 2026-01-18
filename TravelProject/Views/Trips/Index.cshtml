@@ -1,0 +1,44 @@
+﻿@model IEnumerable<TravelProject.Models.TripModel>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>חבילות נופש זמינות</h1>
+        <a asp-action="Create" class="btn btn-primary">הוספת חבילה חדשה +</a>
+    </div>
+
+    <div class="row">
+        @foreach (var item in Model)
+        {
+            <div class="col-md-4 mb-4">
+                <div class="card h-100 trip-card shadow-sm">
+                    <img src="@(string.IsNullOrEmpty(item.ImagePaths) ? "/images/default-trip.jpg" : item.ImagePaths)"
+                         class="card-img-top trip-image" alt="@item.Destination">
+
+                    <div class="card-body">
+                        <h5 class="card-title">@item.Destination, @item.Country</h5>
+                        <p class="card-text text-muted trip-description">@item.Description</p>
+
+                        <div class="trip-details mt-2">
+                            <span><strong>תאריכים:</strong> @item.StartDate.ToString("dd/MM/yyyy") - @item.EndDate.ToString("dd/MM/yyyy")</span><br />
+                            <span><strong>מקומות נותרו:</strong> @item.RoomsAvailable</span>
+                        </div>
+                    </div>
+
+                    <div class="card-footer bg-white border-top-0 d-flex justify-content-between align-items-center">
+                        <div class="price-tag">
+                            @if (item.OriginalPrice.HasValue && item.OriginalPrice > item.Price)
+                            {
+                                <span class="text-decoration-line-through text-muted small">₪@item.OriginalPrice</span>
+                            }
+                            <span class="text-danger fw-bold h5">₪@item.Price</span>
+                        </div>
+                        <div class="btn-group">
+                            <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-outline-info btn-sm">פרטים</a>
+                            <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-outline-warning btn-sm">עריכה</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</div>

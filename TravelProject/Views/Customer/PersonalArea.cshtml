@@ -1,0 +1,226 @@
+﻿@model IEnumerable<TravelProject.Models.OrderModel>
+
+@{
+    ViewData["Title"] = "האזור האישי שלי";
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert" style="margin: 20px;">
+        <strong>שגיאה:</strong> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show text-center" role="alert" style="margin: 20px;">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<div class="container mt-5" dir="rtl" style="text-align: right;">
+    <h2 class="mb-4">הטיולים שהזמנתי</h2>
+
+    @if (!Model.Any())
+    {
+        <div class="alert alert-info">עדיין לא הזמנת טיולים. <a href="@Url.Action("Index", "Customer")">לחץ כאן לצפייה בטיולים זמינים.</a></div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var order in Model.Where(o => string.Equals(o.Status, "Confirmed", StringComparison.OrdinalIgnoreCase)))
+            {
+                var daysLeft = (order.StartDate.Date - DateTime.Now.Date).Days;
+                bool isConfirmed = string.Equals(order.Status, "Confirmed", StringComparison.OrdinalIgnoreCase);
+                bool isWaiting = string.Equals(order.Status, "Waiting", StringComparison.OrdinalIgnoreCase);
+                bool isPending = string.Equals(order.Status, "Pending", StringComparison.OrdinalIgnoreCase);
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card shadow-sm border-0 h-100" style="border-radius: 15px;">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title fw-bold text-primary">@order.Destination</h5>
+                            <p class="mb-1"><strong>תאריך יציאה:</strong> @order.StartDate.ToShortDateString()</p>
+                            <p class="mb-1">
+                                <strong>סטטוס:</strong>
+                                <span class="badge @(isConfirmed ? "bg-success" : (isPending ? "bg-info text-white" : "bg-warning text-dark"))">
+                                    @(isConfirmed ? "מאושר" : (isWaiting ? "ברשימת המתנה" : (isPending ? "ממתין לתשלום" : order.Status)))
+                                </span>
+                            </p>
+
+                            @if (isPending)
+                            {
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-success w-100 rounded-pill shadow-sm"
+                                            onclick="openPaymentModal(@order.Id, '@order.Destination')">
+                                        <i class="bi bi-credit-card-fill me-2"></i> שלם עכשיו
+                                    </button>
+                                </div>
+                            }
+
+                            @if (isConfirmed)
+                            {
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-primary w-100 rounded-pill shadow-sm"
+                                            data-bs-toggle="modal" data-bs-target="#reviewModal-@order.Id">
+                                        <i class="bi bi-chat-left-text-fill me-2"></i> הוסף ביקורת
+                                    </button>
+                                </div>
+                            }
+                            @if (daysLeft > 7)
+                            {
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-outline-danger w-100 rounded-pill shadow-sm"
+                                            data-bs-toggle="modal" data-bs-target="#cancelModal-@order.Id">
+                                        <i class="bi bi-x-circle me-2"></i> ביטול הזמנה
+                                    </button>
+                                </div>
+                            }
+                            @if (!string.IsNullOrEmpty(order.FilePath))
+                            {
+                                <div class="mt-2">
+                                    <a href="@Url.Content(order.FilePath)" target="_blank" class="btn btn-sm btn-outline-info w-100">
+                                        <i class="bi bi-file-earmark-pdf"></i> מסלול טיול (PDF)
+                                    </a>
+                                </div>
+                            }
+
+                            <hr />
+                            <div class="text-center my-auto">
+                                @if (daysLeft > 0)
+                                {
+                                    <span class="h4 fw-bold text-success">@daysLeft ימים ליציאה</span>
+                                }
+                                else 
+                                {
+                                    <span class="text-muted">הטיול יצא לדרך!</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="cancelModal-@order.Id" tabindex="-1" aria-hidden="true" dir="rtl">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content text-end">
+                            <div class="modal-header bg-danger text-white">
+                                <h5 class="modal-title">ביטול הזמנה ל@order.Destination</h5>
+                                <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <div class="modal-body">
+                                <p>האם אתה בטוח שברצונך לבטל את ההזמנה?</p>
+                                <p class="text-muted small">שים לב: נותרו עוד @daysLeft ימים לטיול, ולכן הביטול אפשרי.</p>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">לא, אני רוצה לנסוע</button>
+
+                                <form asp-controller="Customer" asp-action="CancelOrder" method="post">
+                                    <input type="hidden" name="orderId" value="@order.Id" />
+                                    <button type="submit" class="btn btn-danger">כן, בטל הזמנה</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal fade" id="reviewModal-@order.Id" tabindex="-1" aria-hidden="true" dir="rtl">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content text-end">
+                            <div class="modal-header d-flex justify-content-between align-items-center">
+                                <h5 class="modal-title fw-bold">איך היה בטיול ל@order.Destination?</h5>
+                                <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+                            </div>
+                            <form asp-controller="Customer" asp-action="AddReview" method="post">
+                                <div class="modal-body">
+                                    <input type="hidden" name="tripId" value="@order.TripId" />
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">דירוג הטיול:</label>
+                                        <select name="rating" class="form-select" required>
+                                            <option value="5">⭐⭐⭐⭐⭐ - מעולה</option>
+                                            <option value="4">⭐⭐⭐⭐ - טוב מאוד</option>
+                                            <option value="3">⭐⭐⭐ - נחמד</option>
+                                            <option value="2">⭐⭐ - טעון שיפור</option>
+                                            <option value="1">⭐ - לא מומלץ</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="mb-3">
+                                        <label class="form-label fw-bold">ספר לנו עוד על החוויה:</label>
+                                        <textarea name="comment" class="form-control" rows="4" required></textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="submit" class="btn btn-primary">פרסם ביקורת</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white flex-row-reverse">
+                <h5 class="modal-title">תשלום עבור טיול ל<span id="modalDest"></span></h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Customer" asp-action="ProcessPayment" method="post">
+                <div class="modal-body text-end">
+                    <div id="paymentError" class="alert alert-danger d-none">
+                        @TempData["ErrorMessage"]
+                    </div>
+
+                    <input type="hidden" name="orderId" id="modalOrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">מספר כרטיס אשראי</label>
+                        <input type="text" name="cardNumber" class="form-control" placeholder="1234 5678 1234 5678" maxlength="16" required />
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">תוקף</label>
+                            <input type="text" name="expiry" class="form-control" placeholder="MM/YY" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">CVV</label>
+                            <input type="text" name="cvv" class="form-control" placeholder="123" maxlength="3" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-start">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-success px-4">אשר תשלום (Confirm)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openPaymentModal(orderId, destination) {
+            document.getElementById('modalOrderId').value = orderId;
+            document.getElementById('modalDest').innerText = destination;
+            var myModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            myModal.show();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            var errorOrderId = '@TempData["OpenPaymentModal"]';
+            var hasErrorMessage = '@(TempData["ErrorMessage"] != null ? "true" : "false")';
+
+            if (errorOrderId && errorOrderId !== "" && errorOrderId !== "0") {
+                openPaymentModal(errorOrderId, "ההזמנה שלך");
+
+                if (hasErrorMessage === "true") {
+                    var errorDiv = document.getElementById('paymentError');
+                    if (errorDiv) {
+                        errorDiv.classList.remove('d-none');
+                    }
+                }
+            }
+        });
+    </script>
+}

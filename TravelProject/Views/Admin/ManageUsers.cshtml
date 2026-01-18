@@ -1,0 +1,86 @@
+﻿@model IEnumerable<TravelProject.Models.UserModel>
+
+@{
+    ViewData["Title"] = "ניהול משתמשים";
+}
+
+<div class="container mt-5" dir="rtl">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-right mb-0">ניהול משתמשים רשומים</h2>
+
+        <a asp-action="CreateUser" class="btn btn-success shadow-sm rounded-pill px-4">
+            <i class="fas fa-user-plus ml-2"></i>
+            הוסף משתמש חדש
+        </a>
+    </div>
+
+    @if (TempData["Success"] != null)
+    {
+        <div class="alert alert-success text-right shadow-sm">
+            <i class="fas fa-check-circle ml-2"></i> @TempData["Success"]
+        </div>
+    }
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger text-right">@TempData["Error"]</div>
+    }
+
+    <div class="card shadow">
+        <div class="card-body">
+            <table class="table table-hover text-right">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>מזהה</th>
+                        <th>שם משתמש</th>
+                        <th>שם מלא</th>
+                        <th>אימייל</th>
+                        <th>סוג חשבון</th>
+                        <th>פעולות</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model)
+                    {
+                        <tr>
+                            <td>@user.Id</td>
+                            <td>@user.Username</td>
+                            <td>@user.FirstName @user.LastName</td>
+                            <td>@user.Email</td>
+                            <td>
+                                @if (user.IsAdmin)
+                                {
+                                    <span class="badge badge-primary">מנהל</span>
+                                }
+                                else
+                                {
+                                    <span class="badge badge-secondary">לקוח</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="d-flex border-0">
+                                    <a asp-action="UserHistory" asp-route-id="@user.Id" class="btn btn-info btn-sm ml-2">
+                                        <i class="fas fa-history"></i> היסטוריה
+                                    </a>
+
+                                    @if (!user.IsAdmin) 
+                                    {
+                                        <form asp-action="DeleteUser" asp-route-id="@user.Id" method="post"
+                                              onsubmit="return confirm('האם אתה בטוח שברצונך למחוק משתמש זה לצמיתות?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">
+                                                <i class="fas fa-trash"></i> מחק
+                                            </button>
+                                        </form>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+}

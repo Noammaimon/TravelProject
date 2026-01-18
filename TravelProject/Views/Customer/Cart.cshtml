@@ -1,0 +1,141 @@
+﻿@model IEnumerable<TravelProject.Models.OrderModel>
+
+@{
+    ViewData["Title"] = "עגלת קניות";
+
+    var cartItems = Model.Where(o =>
+        string.Equals(o.Status, "Pending", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(o.Status, "Waiting", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(o.Status, "PendingPayment", StringComparison.OrdinalIgnoreCase)).ToList();
+}
+<div class="container mt-5" dir="rtl" style="text-align: right;">
+    <h2 class="mb-4">הטיולים בעגלה</h2>
+
+    @if (!cartItems.Any())
+    {
+        <div class="alert alert-info shadow-sm rounded-4">
+            עגלת הקניות שלך ריקה מטיולים הממתינים לטיפול.
+            <a href="@Url.Action("Index", "Customer")" class="fw-bold">לחץ כאן לצפייה בטיולים זמינים.</a>
+        </div>
+    }
+    else
+    {
+        <div class="row">
+            @foreach (var order in cartItems)
+            {
+                var daysLeft = (order.StartDate.Date - DateTime.Now.Date).Days;
+                bool isWaiting = string.Equals(order.Status, "Waiting", StringComparison.OrdinalIgnoreCase);
+                bool canPay = order.Status != null &&
+                (order.Status.Trim().Equals("Pending", StringComparison.OrdinalIgnoreCase) ||
+                order.Status.Trim().Equals("PendingPayment", StringComparison.OrdinalIgnoreCase));
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card shadow-sm border-0 h-100" style="border-radius: 15px;">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title fw-bold text-primary">@order.Destination</h5>
+                            <p class="mb-1"><strong>תאריך יציאה:</strong> @order.StartDate.ToShortDateString()</p>
+                            <p class="mb-1">
+                                <strong>סטטוס:</strong>
+                                <span class="badge @(canPay ? "bg-info text-white" : "bg-warning text-dark")">
+                                    @(isWaiting ? "ברשימת המתנה" : "ממתין לתשלום")
+                                </span>
+                            </p>
+
+                            @if (canPay)
+                            {
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-success w-100 rounded-pill shadow-sm fw-bold"
+                                            onclick="openPaymentModal(@order.Id, '@order.Destination')">
+                                        <i class="bi bi-credit-card-fill me-2"></i> שלם עכשיו
+                                    </button>
+                                </div>
+                            }
+                            else if (isWaiting)
+                            {
+                                <div class="mt-3">
+                                    <div class="alert alert-warning py-2 px-3 small rounded-pill text-center mb-0">
+                                        <i class="bi bi-hourglass-split"></i> נעדכן כשישתחרר מקום
+                                    </div>
+                                </div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(order.FilePath))
+                            {
+                                <div class="mt-3">
+                                    <a href="@Url.Content(order.FilePath)" target="_blank" class="btn btn-sm btn-outline-secondary w-100 rounded-pill">
+                                        <i class="bi bi-file-earmark-pdf"></i> מסלול טיול (PDF)
+                                    </a>
+                                </div>
+                            }
+
+                            <hr class="mt-auto" />
+                            <div class="text-center">
+                                @if (daysLeft > 1)
+                                {
+                                    <span class="h5 fw-bold text-success">@daysLeft ימים ליציאה</span>
+                                }
+                                else if (daysLeft == 1)
+                                {
+                                    <span class="h5 fw-bold text-warning">יוצאים מחר!</span>
+                                }
+                                else if (daysLeft == 0)
+                                {
+                                    <span class="h5 fw-bold text-danger">יוצאים היום!</span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">הטיול יצא לדרך</span>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-success text-white flex-row-reverse">
+                <h5 class="modal-title fw-bold">תשלום עבור טיול ל<span id="modalDest"></span></h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Customer" asp-action="ProcessPayment" method="post">
+                <div class="modal-body text-end p-4">
+                    <input type="hidden" name="orderId" id="modalOrderId" />
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">מספר כרטיס אשראי</label>
+                        <input type="text" name="cardNumber" class="form-control form-control-lg" placeholder="1234 5678 1234 5678" maxlength="16" required />
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">תוקף</label>
+                            <input type="text" name="expiry" class="form-control" placeholder="MM/YY" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">CVV</label>
+                            <input type="text" name="cvv" class="form-control" placeholder="123" maxlength="3" required />
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer justify-content-between bg-light">
+                    <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-success px-5 rounded-pill fw-bold">בצע תשלום</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openPaymentModal(orderId, destination) {
+            document.getElementById('modalOrderId').value = orderId;
+            document.getElementById('modalDest').innerText = destination;
+            var myModal = new bootstrap.Modal(document.getElementById('paymentModal'));
+            myModal.show();
+        }
+    </script>
+}

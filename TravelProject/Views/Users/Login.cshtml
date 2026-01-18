@@ -1,0 +1,43 @@
+﻿@{
+    ViewData["Title"] = "התחברות";
+}
+
+<div class="row justify-content-center mt-5">
+    <div class="col-md-4 card p-4 shadow">
+        <h3 class="text-center mb-4">כניסה למערכת</h3>
+
+        @if (ViewBag.Error != null)
+        {
+            <div class="alert alert-danger text-center">
+                @ViewBag.Error
+            </div>
+        }
+
+        @if (TempData["SuccessMessage"] != null)
+        {
+            <div class="alert alert-success text-center">
+                @TempData["SuccessMessage"]
+            </div>
+        }
+
+        <form asp-action="Login" method="post">
+            <div class="form-group mb-3">
+                <label class="control-label">שם משתמש:</label>
+                <input type="text" name="username" class="form-control" required />
+            </div>
+
+            <div class="form-group mb-3">
+                <label class="control-label">סיסמה:</label>
+                <input type="password" name="password" class="form-control" required />
+            </div>
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-block">התחבר</button>
+            </div>
+        </form>
+
+        <div class="text-center mt-3">
+            <p>עדיין אין לך חשבון? <a asp-action="Register">הירשם כאן</a></p>
+        </div>
+    </div>
+</div>

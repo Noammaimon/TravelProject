@@ -1,0 +1,380 @@
+﻿@using Microsoft.AspNetCore.Http
+@model TravelProject.Models.TripModel
+
+@{
+    ViewData["Title"] = "פרטי טיול - " + Model.Destination;
+    bool isAdmin = Context.Session.GetInt32("IsAdmin") == 1;
+    bool isLoggedIn = Context.Session.GetInt32("UserId") != null;
+}
+
+@if (TempData["ErrorMessage"] != null)
+{
+    <div class="alert alert-danger alert-dismissible fade show text-center" role="alert" style="margin: 20px;">
+        <strong>שגיאה:</strong> @TempData["ErrorMessage"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+
+@if (TempData["Success"] != null)
+{
+    <div class="alert alert-success alert-dismissible fade show text-center" role="alert" style="margin: 20px;">
+        @TempData["Success"]
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+}
+<div class="container mt-5 pt-5" dir="rtl">
+    <div class="row g-5">
+        <div class="col-lg-7">
+            <div class="details-img-wrapper shadow-lg overflow-hidden rounded-4">
+                <img src="@(string.IsNullOrEmpty(Model.ImagePaths) ? "/images/default-trip.jpg" : Model.ImagePaths)"
+                     class="img-fluid w-100 shadow" alt="@Model.Destination">
+            </div>
+        </div>
+
+        <div class="col-lg-5 text-end d-flex flex-column">
+            
+
+            <h1 class="display-4 fw-bold mb-2">@Model.Destination</h1>
+            <h4 class="text-muted mb-4"><i class="bi bi-geo-alt-fill"></i> @Model.Country</h4>
+
+            <p class="lead text-secondary mb-4">
+                @Model.Description
+            </p>
+
+            <div class="management-section p-3 bg-white rounded-4 shadow-sm border">
+                <div class="d-flex justify-content-between align-items-center mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold mb-0 text-dark">מועדים זמינים להזמנה:</h5>
+                    @if (isAdmin)
+                    {
+                        <a asp-controller="Trips" asp-action="AddDate" asp-route-id="@Model.Id"
+                           class="btn btn-success btn-sm rounded-pill px-3">
+                            <i class="bi bi-plus-circle"></i> הוסף מועד חדש
+                        </a>
+                    }
+                </div>
+
+                <div class="list-group list-group-flush">
+                    @if (Model.Instances != null && Model.Instances.Any())
+                    {
+                        var futureInstances = Model.Instances
+                        .Where(i => i.StartDate.Date >= DateTime.Today)
+                        .OrderBy(i => i.StartDate);
+                        @foreach (var instance in futureInstances)
+                        {
+                            bool isSaleActive = instance.OriginalPrice.HasValue && instance.OriginalPrice > instance.Price;
+                            int discountPercent = 0;
+                            if (isSaleActive && instance.OriginalPrice > 0)
+                            {
+                                discountPercent = (int)((1 - (instance.Price / instance.OriginalPrice.Value)) * 100);
+                            }
+
+                            <div class="list-group-item d-flex justify-content-between align-items-center px-0 py-3 border-bottom">
+                                <div class="text-end">
+                                    <div class="mb-1">
+                                        <span class="text-uppercase fw-bold text-secondary" style="font-size: 0.75rem; letter-spacing: 0.5px;">
+                                            <i class="bi bi-tag-fill ms-1"></i> @instance.TripType
+                                        </span>
+                                        @if (instance.AgeLimitation > 0)
+                                        {
+                                            <span class="badge bg-dark ms-2" style="font-size: 0.7rem;">
+                                                <i class="bi bi-person-exclamation"></i> מגיל @instance.AgeLimitation+
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-light text-muted border ms-2" style="font-size: 0.7rem;">
+                                                לכל המשפחה
+                                            </span>
+                                        }
+                                    </div>
+
+                                    <div class="fw-bold text-primary mb-2" style="font-size: 1.05rem;">
+                                        <i class="bi bi-calendar-check ms-1"></i>
+                                        @(instance.StartDate != DateTime.MinValue ? instance.StartDate.ToString("dd/MM/yyyy") : "טרם נקבע") -
+                                        @(instance.EndDate != DateTime.MinValue ? instance.EndDate.ToString("dd/MM/yyyy") : "טרם נקבע")
+                                    </div>
+
+                                    <div class="price-container">
+                                        @if (isSaleActive)
+                                        {
+                                            <div class="d-flex align-items-center gap-2 mb-1">
+                                                <span class="fw-bold text-danger fs-5">₪@instance.Price.ToString("N0")</span>
+                                                <span class="text-decoration-line-through text-muted small">₪@instance.OriginalPrice?.ToString("N0")</span>
+                                                <span class="badge bg-danger rounded-pill small">-@discountPercent%</span>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="fw-bold fs-5">₪@instance.Price.ToString("N0")</span>
+                                        }
+
+                                        <div class="text-muted small mt-1">
+                                            <i class="bi bi-door-open ms-1"></i> נותרו @instance.RoomsAvailable חדרים
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="actions me-3" style="min-width: 140px;">
+                                    <button type="button"
+                                            class="btn btn-sm btn-outline-info py-2 px-3 mb-2 w-100 rounded-pill fw-bold"
+                                            onclick="openTripInstanceModal(
+            '@instance.StartDate.ToString("dd/MM/yyyy")',
+            '@instance.EndDate.ToString("dd/MM/yyyy")',
+            '@instance.Price.ToString("N0")',
+            '@instance.RoomsAvailable',
+            '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(instance.Description ?? ""))',
+            '@Html.Raw(System.Web.HttpUtility.JavaScriptStringEncode(instance.TripType ?? ""))')"
+                                            '@instance.AgeLimitation'>
+                                        <i class="bi bi-info-circle"></i> פרטים
+                                    </button>
+                                    @if (isAdmin)
+                                    {
+
+                                        <div class="d-flex flex-column gap-2">
+                                            <a asp-controller="Trips" asp-action="Edit" asp-route-id="@instance.Id"
+                                               class="btn btn-sm btn-outline-warning py-2 w-100 rounded-pill fw-bold">
+                                                <i class="bi bi-pencil small"></i> ערוך
+                                            </a>
+
+                                            <form asp-controller="Trips" asp-action="Delete" method="post"
+                                                  onsubmit="return confirm('האם למחוק מועד זה?')">
+                                                <input type="hidden" name="instanceId" value="@instance.Id" />
+                                                <input type="hidden" name="tripId" value="@Model.Id" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger py-1 px-3 w-100">
+                                                    <i class="bi bi-trash small"></i> מחק
+                                                </button>
+                                            </form>
+                                        </div>
+                                    }
+                                    else if (isLoggedIn)
+                                    {
+                                        <form asp-controller="Customer" asp-action="BookTrip" method="post" class="mt-3">
+                                            <input type="hidden" name="instanceId" value="@instance.Id" />
+
+                                            @if (instance.RoomsAvailable <= 0)
+                                            {
+                                                <div class="mb-2">
+                                                    <small class="text-muted d-block">
+                                                        <i class="bi bi-info-circle"></i> הטיול מלא
+                                                    </small>
+                                                    <span class="text-secondary" style="font-size: 0.9rem;">
+                                                        ממתינים לפניך בתור: <strong>@instance.WaitingCount</strong>
+                                                    </span>
+                                                </div>
+
+                                                <button type="submit" class="btn btn-warning btn-sm rounded-pill px-4 shadow-sm fw-bold">
+                                                    <i class="bi bi-clock-history"></i> הצטרף להמתנה
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button type="submit" class="btn btn-pink-search btn-sm rounded-pill px-4 shadow-sm text-white">
+                                                    <i class="bi bi-cart-plus"></i> הוסף לעגלה
+                                                </button>
+                                            }
+                                        </form>
+
+                                        @if (isLoggedIn && instance.RoomsAvailable > 0)
+                                        {
+                                            <button type="button" class="btn btn-success btn-sm rounded-pill px-4 shadow-sm mt-2 w-100"
+                                                    onclick="openPaymentModal('@instance.Id', '@Model.Destination', '@instance.Price')">
+                                                שלם עכשיו
+                                            </button>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <a asp-controller="Users" asp-action="Login"
+                                           class="btn btn-outline-primary btn-sm rounded-pill w-100 shadow-sm fw-bold">
+                                            התחבר לרכישה
+                                        </a>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <div class="mt-4">
+                    @{
+                        string backController = isAdmin ? "Admin" : (isLoggedIn ? "Customer" : "Home");
+                    }
+                    <a asp-controller="@backController" asp-action="Index" class="btn btn-outline-dark w-100 rounded-pill fw-bold">
+                        <i class="bi bi-arrow-right"></i> חזרה לרשימת הטיולים
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="paymentModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white flex-row-reverse">
+                <h5 class="modal-title">תשלום עבור טיול ל<span id="modalDest"></span></h5>
+                <button type="button" class="btn-close btn-close-white ms-0 me-auto" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form asp-controller="Customer" asp-action="ProcessPayment" method="post">
+                <div class="modal-body text-end">
+                    @if (TempData["ErrorMessage"] != null)
+                    {
+                        <div id="paymentError" class="alert alert-danger py-2 small">
+                            <i class="bi bi-exclamation-triangle-fill ms-1"></i>
+                            @TempData["ErrorMessage"]
+                        </div>
+                    }
+                    <input type="hidden" name="orderId" value="0" />
+                    <input type="hidden" name="instanceId" id="modalInstanceId" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">מספר כרטיס אשראי</label>
+                        <input type="text" name="cardNumber" class="form-control" placeholder="1234 5678 1234 5678" maxlength="16" required />
+                    </div>
+                    <div class="row">
+                        <div class="col-6">
+                            <label class="form-label fw-bold">תוקף</label>
+                            <input type="text" name="expiry" class="form-control" placeholder="MM/YY" required />
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-bold">CVV</label>
+                            <input type="text" name="cvv" class="form-control" placeholder="123" maxlength="3" required />
+                        </div>
+                    </div>
+                    <p class="text-muted small mt-3">התשלום מאובטח. פרטי האשראי אינם נשמרים במערכת.</p>
+                </div>
+                <div class="modal-footer justify-content-start">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ביטול</button>
+                    <button type="submit" class="btn btn-success px-4">אשר תשלום (Confirm)</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<div class="modal fade" id="tripInstanceModal" tabindex="-1" aria-hidden="true" dir="rtl">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title fw-bold">פרטי המועד שנבחר</h5>
+
+                <button type="button" class="btn-close btn-close-white m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body text-end p-4">
+                <div class="mb-3">
+                    <span id="modalTripType" class="badge bg-primary px-3 py-2 rounded-pill"></span>
+                </div>
+
+                <div class="mb-4">
+                    <h6 class="text-muted mb-2 border-bottom pb-1 fw-bold">על הטיול</h6>
+                    <p id="modalFullDesc" class="text-dark" style="line-height: 1.6; white-space: pre-line;"></p>
+                </div>
+
+                <div class="row g-3 bg-light p-3 rounded-3 text-center">
+                    <div class="col-6 border-start">
+                        <small class="text-muted d-block small">תאריכים</small>
+                        <span class="fw-bold" id="modalDates"></span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted d-block small">מחיר לאדם</small>
+                        <span class="fw-bold text-primary" id="modalPrice"></span>
+                    </div>
+                    <div class="col-12 mt-2 border-top pt-2">
+                        <small class="text-muted d-block small">מצב פניות</small>
+                        <span id="modalRooms" class="badge bg-secondary"></span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-secondary w-100 rounded-pill" data-bs-dismiss="modal">סגור</button>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts {
+    <script>
+        function openPaymentModal(id, destination) {
+            var idInput = document.getElementById('modalInstanceId');
+            var destSpan = document.getElementById('modalDest');
+
+            if (idInput) idInput.value = id;
+            if (destSpan) destSpan.innerText = destination;
+
+            var modalElement = document.getElementById('paymentModal');
+            if (modalElement) {
+                try {
+                    var myModal = bootstrap.Modal.getOrCreateInstance(modalElement);
+                    myModal.show();
+                } catch (e) {
+                   
+                    if (window.jQuery) { $('#paymentModal').modal('show'); }
+                }
+            }
+        }
+        function openTripInstanceModal(startDate, endDate, price, rooms, description, type) {
+            document.getElementById('modalTripType').textContent = type || "כללי";
+            document.getElementById('modalFullDesc').textContent = description || "אין תיאור זמין";
+            document.getElementById('modalDates').textContent = startDate + " - " + endDate;
+            document.getElementById('modalPrice').textContent = "₪" + price;
+
+            let roomsElem = document.getElementById('modalRooms');
+            if (rooms > 0) {
+                roomsElem.innerText = "נותרו " + rooms + " חדרים פנויים";
+                roomsElem.className = "badge bg-success";
+            } else {
+                roomsElem.innerText = "הטיול מלא - הרשמה להמתנה"; 
+                roomsElem.className = "badge bg-danger";
+            }
+
+            var tripModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('tripInstanceModal'));
+            tripModal.show();
+        }
+        window.onload = function () {
+            var openByOrder = '@TempData["OpenPaymentModal"]';
+            var openByInstance = '@TempData["OpenPaymentModalInstanceId"]';
+
+            var idToOpen = (openByOrder && openByOrder !== "0") ? openByOrder : openByInstance;
+
+            if (idToOpen && idToOpen !== "" && idToOpen !== "0") {
+                setTimeout(function () {
+                    openPaymentModal(idToOpen, "@Html.Raw(Model.Destination)");
+                }, 300);
+            }
+        };
+    </script>
+}
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+
+
+        <h3 class="fw-bold mb-4">ביקורות של מטיילים אחרים</h3>
+        <div id="reviews-list">
+            @if (ViewBag.TripReviews != null && ((List<TravelProject.Models.TripReviewModel>)ViewBag.TripReviews).Any())
+            {
+                foreach (var review in (List<TravelProject.Models.TripReviewModel>)ViewBag.TripReviews)
+                {
+                    <div class="card mb-3 border-0 shadow-sm rounded-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="fw-bold text-primary">@review.Username</span>
+                                <span class="text-muted small">@review.ReviewDate.ToString("dd/MM/yyyy")</span>
+                            </div>
+                            <div class="text-warning mb-2">
+                                @for (int i = 1; i <= 5; i++)
+                                {
+                                    <i class="bi @(i <= review.Rating ? "bi-star-fill" : "bi-star")"></i>
+                                }
+                            </div>
+                            <p class="text-dark mb-0">@review.CommentText</p>
+                        </div>
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted italic">עדיין אין ביקורות לטיול זה. היו הראשונים לדרג</p>
+            }
+        </div>
+    </div>
+</div>
+</div>
